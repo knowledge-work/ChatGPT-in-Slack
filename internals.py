@@ -15,8 +15,9 @@ from slack_sdk.web import WebClient, SlackResponse
 # Internal functions
 #
 
-MAX_TOKENS = 1024
-GPT_3_5_TURBO_0301_MODEL = "gpt-3.5-turbo-0301"
+MAX_TOKENS = 2048
+# GPT_CHAT_MODEL = "gpt-3.5-turbo-0301"
+GPT_CHAT_MODEL = "gpt-4"
 
 
 def format_openai_message_content(content: str) -> str:
@@ -49,7 +50,8 @@ def start_receiving_openai_response(
 
     return openai.ChatCompletion.create(
         api_key=api_key,
-        model="gpt-3.5-turbo",
+        # model="gpt-3.5-turbo",
+        model=GPT_CHAT_MODEL,
         messages=messages,
         top_p=1,
         n=1,
@@ -175,14 +177,14 @@ def update_wip_message(
 
 def calculate_num_tokens(
     messages: List[Dict[str, str]],
-    model: str = GPT_3_5_TURBO_0301_MODEL,
+    model: str = GPT_CHAT_MODEL,
 ) -> int:
     """Returns the number of tokens used by a list of messages."""
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError:
         encoding = tiktoken.get_encoding("cl100k_base")
-    if model == GPT_3_5_TURBO_0301_MODEL:  # note: future models may deviate from this
+    if model == GPT_CHAT_MODEL:  # note: future models may deviate from this
         num_tokens = 0
         for message in messages:
             # every message follows <im_start>{role/name}\n{content}<im_end>\n

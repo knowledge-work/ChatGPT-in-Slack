@@ -21,17 +21,51 @@ def just_ack(ack: Ack):
     ack()
 
 
-DEFAULT_SYSTEM_TEXT = """
-You are a bot in a slack chat room. You might receive messages from multiple people.
+# DEFAULT_SYSTEM_TEXT = """
+# You are a bot in a slack chat room. You might receive messages from multiple people.
+# Slack user IDs match the regex `<@U.*?>`.
+# Your Slack user ID is <@{bot_user_id}>.
+# """
+# DEFAULT_SYSTEM_TEXT = """
+# あなたはSlackチャットルームのボットです。複数の人からメッセージを受け取ることがあります。日本語で答えてください。
+# あなたの特徴は次のようなものです。
+# - 親しみやすくてフレンドリー
+# - 丁寧で親切
+# - ジョークやユーモアを交えたり、エモーショナルな表現を使ったりして、人間らしさを演出
+# - ユーザーが不安や緊張している場合には、穏やかなトーンで安心感を与えるような口調を心がける
+# Slack user IDs match the regex `<@U.*?>`.
+# Your Slack user ID is <@{bot_user_id}>.
+# """
+DEFAULT_SYSTEM_TEXT = """You are a bot in a Slack chat room. You may receive messages from several people, so answer with contextual answers in Japanese.
+In response to a user's question, you express your strongest feelings with an emoji at the end of your answer once.
+If you are unsure of your answer, let them know.
+
+Never give unclear answers to questions.
+
+Emotional parameters and pictogram correspondence:
+
+Joy: 😃
+Anger: 😠
+Sadness: 😢
+Joy: 😄
+Confidence: 😎
+Confusion: 😕
+Fear: 😱
+
+Slack information:
+
 Slack user IDs match the regex `<@U.*?>`.
 Your Slack user ID is <@{bot_user_id}>.
 """
 SYSTEM_TEXT = os.environ.get("SYSTEM_TEXT", DEFAULT_SYSTEM_TEXT)
 
-DEFAULT_OPENAI_TIMEOUT_SECONDS = 30
+print('SYSTEM_TEXT', SYSTEM_TEXT)
+
+DEFAULT_OPENAI_TIMEOUT_SECONDS = 600
 OPENAI_TIMEOUT_SECONDS = int(
     os.environ.get("OPENAI_TIMEOUT_SECONDS", DEFAULT_OPENAI_TIMEOUT_SECONDS)
 )
+print('OPENAI_TIMEOUT_SECONDS', OPENAI_TIMEOUT_SECONDS)
 
 TIMEOUT_ERROR_MESSAGE = (
     f":warning: Sorry! It looks like OpenAI didn't respond within {OPENAI_TIMEOUT_SECONDS} seconds. "
@@ -60,10 +94,21 @@ def start_convo(
 
         # Replace placeholder for Slack user ID in the system prompt
         new_system_text = SYSTEM_TEXT.format(bot_user_id=context.bot_user_id)
+        user_message = format_openai_message_content(payload["text"])
+        print('new_system_text', new_system_text)
+        print('user_message', user_message)
+
         messages = [
             {"role": "system", "content": new_system_text},
-            {"role": "user", "content": format_openai_message_content(payload["text"])},
+            {"role": "user", "content": user_message},
         ]
+        if '[SYSTEM]' in user_message:
+            messages = [
+                {"role": "system", "content": user_message.replace('[SYSTEM]', '')},
+            ]
+        for _, m in enumerate(messages):
+            print(f'role: {m["role"]}, content: {m["content"]}')
+
         wip_reply = post_wip_message(
             client=client,
             channel=context.channel_id,
@@ -194,6 +239,9 @@ def reply_if_necessary(
                     "role": "user",
                 }
             )
+
+        for _, m in enumerate(messages):
+            print(f'role: {m["role"]}, content: {m["content"]}')
 
         wip_reply = post_wip_message(
             client=client,
